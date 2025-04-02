@@ -80,6 +80,35 @@ void KaZaProtocol::_dataReady()
             emit frameDbQueryResult(id, columns, result);
             break;
         }
+        case FRAME_SOCKET_CONNECT: {
+            QDataStream dataStream(&data, QIODevice::ReadOnly);
+            uint16_t id;
+            QString hostname;
+            uint16_t port;
+            dataStream >> id;
+            dataStream >> hostname;
+            dataStream >> port;
+            emit frameSocketConnect(id, hostname, port);
+            break;
+        }
+        case FRAME_SOCKET_DATA: {
+            QDataStream dataStream(&data, QIODevice::ReadOnly);
+            uint16_t id;
+            QByteArray datas;
+            dataStream >> id;
+            dataStream >> datas;
+            emit frameSocketData(id, datas);
+            break;
+        }
+        case FRAME_SOCKET_STATE: {
+            QDataStream dataStream(&data, QIODevice::ReadOnly);
+            uint16_t id;
+            uint16_t state;
+            dataStream >> id;
+            dataStream >> state;
+            emit frameSocketState(id, state);
+            break;
+        }
         }
         m_pending.remove(0, len+5);
     }
@@ -175,4 +204,32 @@ void KaZaProtocol::sendDbQueryResult(uint32_t id, const QStringList &culumns, co
     stream << culumns;
     stream << result;
     _sendFrame(FRAME_DBRESULT, dataret);
+}
+
+void KaZaProtocol::sendSocketConnect(uint16_t id, const QString hostname, uint16_t port)
+{
+    QByteArray dataret;
+    QDataStream stream(&dataret, QIODevice::ReadWrite);
+    stream << id;
+    stream << hostname;
+    stream << port;
+    _sendFrame(FRAME_SOCKET_CONNECT, dataret);
+}
+
+void KaZaProtocol::sendSocketData(uint16_t id, QByteArray data)
+{
+    QByteArray dataret;
+    QDataStream stream(&dataret, QIODevice::ReadWrite);
+    stream << id;
+    stream << data;
+    _sendFrame(FRAME_SOCKET_DATA, dataret);
+}
+
+void KaZaProtocol::sendSocketState(uint16_t id, uint16_t state)
+{
+    QByteArray dataret;
+    QDataStream stream(&dataret, QIODevice::ReadWrite);
+    stream << id;
+    stream << state;
+    _sendFrame(FRAME_SOCKET_STATE, dataret);
 }

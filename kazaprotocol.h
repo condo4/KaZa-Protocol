@@ -22,7 +22,10 @@ public:
         FRAME_FILE,
         FRAME_OBJVALUE,
         FRAME_DBQUERY,
-        FRAME_DBRESULT
+        FRAME_DBRESULT,
+        FRAME_SOCKET_CONNECT,
+        FRAME_SOCKET_DATA,
+        FRAME_SOCKET_STATE
     };
 
 public slots:
@@ -31,6 +34,9 @@ public slots:
     void sendObject(quint16 id, const QVariant &value);
     void sendDbQuery(uint32_t id, const QString &query);
     void sendDbQueryResult(uint32_t id, const QStringList &culumns, const QList<QList<QVariant>> &result);
+    void sendSocketConnect(uint16_t id, const QString hostname, uint16_t port);
+    void sendSocketData(uint16_t id, QByteArray data);
+    void sendSocketState(uint16_t id, uint16_t state);
 
 private slots:
     void _dataReady();
@@ -44,6 +50,9 @@ signals:
     void frameOject(quint16 id, QVariant value);
     void frameDbQuery(uint32_t id, QString query);
     void frameDbQueryResult(uint32_t id, const QStringList &culumns, const QList<QList<QVariant>> &result);
+    void frameSocketConnect(uint16_t id, const QString hostname, uint16_t port);
+    void frameSocketData(uint16_t id, QByteArray data);
+    void frameSocketState(uint16_t id, uint16_t state);
 };
 
 
