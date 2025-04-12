@@ -50,11 +50,13 @@ void KaZaProtocol::_dataReady()
             QByteArray dataRaw = data.mid(2);
             QDataStream dataStream(&dataRaw, QIODevice::ReadOnly);
             QVariant value;
+            bool confirm;
             dataStream >> value;
+            dataStream >> confirm;
 #ifdef DEBUG_FRAME
             qDebug().noquote() << "frameOject(" << id << ", " << value << ")";
 #endif
-            emit frameOject(id, value);
+            emit frameOject(id, value, confirm);
             break;
         }
         case FRAME_FILE:
@@ -170,13 +172,14 @@ void KaZaProtocol::sendFile(const QString &fileid, const QString &filepath)
     }
 }
 
-void KaZaProtocol::sendObject(quint16 id, const QVariant &value)
+void KaZaProtocol::sendObject(quint16 id, const QVariant &value, bool confirm)
 {
     QByteArray frame;
     QByteArray data;
     QDataStream dataStream(&data, QIODevice::WriteOnly);
     dataStream.setVersion(QDataStream::Qt_6_0);
     dataStream << value;
+    dataStream << confirm;
     frame.append((id >>  8) & 0xFF);
     frame.append((id >>  0) & 0xFF);
     frame.append(data);
