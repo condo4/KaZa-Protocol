@@ -12,10 +12,17 @@ class KaZaProtocol : public QObject
     Q_OBJECT
     QTcpSocket *m_socket;
     QByteArray m_pending;
+    bool m_versionNegotiated;
+    quint8 m_peerProtocolMajor;
+    quint8 m_peerProtocolMinor;
 
 public:
     explicit KaZaProtocol(QTcpSocket *socket, QObject *parent = nullptr);
     quint16 peerPort() const;
+
+    // Protocol version
+    static constexpr quint8 PROTOCOL_VERSION_MAJOR = 1;
+    static constexpr quint8 PROTOCOL_VERSION_MINOR = 1;
 
     enum {
         FRAME_SYSTEM,
@@ -25,10 +32,24 @@ public:
         FRAME_DBRESULT,
         FRAME_SOCKET_CONNECT,
         FRAME_SOCKET_DATA,
-        FRAME_SOCKET_STATE
+        FRAME_SOCKET_STATE,
+        FRAME_VERSION = 255  // Version negotiation frame
     };
 
+    // Version negotiation state
+    bool isVersionNegotiated() const { return m_versionNegotiated; }
+    quint8 peerProtocolMajor() const { return m_peerProtocolMajor; }
+    quint8 peerProtocolMinor() const { return m_peerProtocolMinor; }
+
+    // Legacy client support - assume version 1.0 for backward compatibility
+    void assumeLegacyClient();
+
 public slots:
+    // Version negotiation
+    void sendVersion();
+    void sendVersionResponse(bool compatible);
+
+    // Regular protocol frames
     void sendCommand(QString cmd);
     void sendFile(const QString &fileid, const QString &filepath);
     void sendObject(quint16 id, const QVariant &value, bool confirm);
@@ -45,6 +66,14 @@ private slots:
 
 signals:
     void disconnectFromHost();
+
+    // Version negotiation signals
+    void versionReceived(quint8 major, quint8 minor);
+    void versionResponseReceived(bool compatible, quint8 major, quint8 minor);
+    void versionNegotiated();
+    void versionIncompatible(QString reason);
+
+    // Regular protocol signals
     void frameCommand(QString cmd);
     void frameFile(const QString &fileid, QByteArray data);
     void frameOject(quint16 id, QVariant value, bool confirm);

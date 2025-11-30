@@ -7,6 +7,9 @@
 KaZaProtocol::KaZaProtocol(QTcpSocket *socket, QObject *parent)
     : QObject{parent}
     , m_socket(socket)
+    , m_versionNegotiated(false)
+    , m_peerProtocolMajor(0)
+    , m_peerProtocolMinor(0)
 {
     QObject::connect(m_socket, &QTcpSocket::readyRead, this, &KaZaProtocol::_dataReady);
     QObject::connect(m_socket, &QTcpSocket::disconnected, this, &KaZaProtocol::disconnectFromHost);
@@ -32,6 +35,46 @@ void KaZaProtocol::_dataReady()
 
         switch(packid)
         {
+        case FRAME_VERSION: {
+            if(data.size() < 3) {
+                qWarning() << "Invalid VERSION frame size:" << data.size();
+                emit versionIncompatible("Invalid version frame");
+                break;
+            }
+
+            quint8 peerMajor = data[0];
+            quint8 peerMinor = data[1];
+            quint8 isResponse = data[2];  // 0 = request, 1 = response
+
+            if(isResponse == 0) {
+                // This is a version request from peer
+#ifdef DEBUG_FRAME
+                qDebug() << "Received VERSION request:" << peerMajor << "." << peerMinor;
+#endif
+                m_peerProtocolMajor = peerMajor;
+                m_peerProtocolMinor = peerMinor;
+                emit versionReceived(peerMajor, peerMinor);
+            } else {
+                // This is a version response from peer
+                bool compatible = (data[3] == 1);
+#ifdef DEBUG_FRAME
+                qDebug() << "Received VERSION response:" << (compatible ? "COMPATIBLE" : "INCOMPATIBLE");
+#endif
+                if(compatible) {
+                    m_peerProtocolMajor = peerMajor;
+                    m_peerProtocolMinor = peerMinor;
+                    m_versionNegotiated = true;
+                    emit versionNegotiated();
+                } else {
+                    QString reason = "Protocol version incompatible. Server: " +
+                                   QString::number(peerMajor) + "." + QString::number(peerMinor);
+                    emit versionIncompatible(reason);
+                }
+                emit versionResponseReceived(compatible, peerMajor, peerMinor);
+            }
+            break;
+        }
+
         case FRAME_SYSTEM:
 #ifdef DEBUG_FRAME
             qDebug() << "RX CMD " << QString::fromUtf8(data);
@@ -39,16 +82,14 @@ void KaZaProtocol::_dataReady()
             emit frameCommand(QString::fromUtf8(data));
             break;
         case FRAME_OBJVALUE: {
-            quint8 id0 = data[0];
-            quint8 id1 = data[1];
-            quint16 id = (id0 << 8) | id1;
+            QDataStream frameStream(&data, QIODevice::ReadOnly);
+            frameStream.setByteOrder(QDataStream::BigEndian);
+            quint16 id;
+            frameStream >> id;
 
-            if(id > 300)
-            {
-                qDebug().noquote() << "frameOject: " << id << " : " << frameToStr(data) << id0 << id1;
-            }
             QByteArray dataRaw = data.mid(2);
             QDataStream dataStream(&dataRaw, QIODevice::ReadOnly);
+            dataStream.setVersion(QDataStream::Qt_6_0);
             QVariant value;
             bool confirm;
             dataStream >> value;
@@ -140,13 +181,61 @@ int KaZaProtocol::_readFrame(uint8_t &id, QByteArray &source) {
 
 void KaZaProtocol::_sendFrame(uint8_t id, const QByteArray &source) {
     QByteArray frame;
-    frame.append(id);
-    frame.append((source.length() >> 24) & 0xFF);
-    frame.append((source.length() >> 16) & 0xFF);
-    frame.append((source.length() >>  8) & 0xFF);
-    frame.append((source.length() >>  0) & 0xFF);
+    QDataStream stream(&frame, QIODevice::WriteOnly);
+    stream.setByteOrder(QDataStream::BigEndian);
+
+    stream << id;
+    stream << (quint32)source.length();
     frame.append(source);
+
     m_socket->write(frame);
+}
+
+void KaZaProtocol::sendVersion()
+{
+    QByteArray data;
+    data.append(PROTOCOL_VERSION_MAJOR);
+    data.append(PROTOCOL_VERSION_MINOR);
+    data.append((quint8)0);  // 0 = request
+
+#ifdef DEBUG_FRAME
+    qDebug() << "Sending VERSION request:" << PROTOCOL_VERSION_MAJOR << "." << PROTOCOL_VERSION_MINOR;
+#endif
+
+    _sendFrame(FRAME_VERSION, data);
+}
+
+void KaZaProtocol::sendVersionResponse(bool compatible)
+{
+    QByteArray data;
+    data.append(PROTOCOL_VERSION_MAJOR);
+    data.append(PROTOCOL_VERSION_MINOR);
+    data.append((quint8)1);  // 1 = response
+    data.append(compatible ? (quint8)1 : (quint8)0);
+
+#ifdef DEBUG_FRAME
+    qDebug() << "Sending VERSION response:" << (compatible ? "COMPATIBLE" : "INCOMPATIBLE");
+#endif
+
+    _sendFrame(FRAME_VERSION, data);
+
+    if(compatible) {
+        m_versionNegotiated = true;
+        emit versionNegotiated();
+    }
+}
+
+void KaZaProtocol::assumeLegacyClient()
+{
+    // Assume legacy client (version 1.0) for backward compatibility
+    // This is called when a client sends non-VERSION frames without negotiating
+    m_peerProtocolMajor = 1;
+    m_peerProtocolMinor = 0;
+    m_versionNegotiated = true;
+
+#ifdef DEBUG_FRAME
+    qDebug() << "Assuming legacy client version 1.0 (no version negotiation)";
+#endif
 }
 
 void KaZaProtocol::sendCommand(QString cmd)
@@ -175,13 +264,16 @@ void KaZaProtocol::sendFile(const QString &fileid, const QString &filepath)
 void KaZaProtocol::sendObject(quint16 id, const QVariant &value, bool confirm)
 {
     QByteArray frame;
+    QDataStream frameStream(&frame, QIODevice::WriteOnly);
+    frameStream.setByteOrder(QDataStream::BigEndian);
+    frameStream << id;
+
     QByteArray data;
     QDataStream dataStream(&data, QIODevice::WriteOnly);
     dataStream.setVersion(QDataStream::Qt_6_0);
     dataStream << value;
     dataStream << confirm;
-    frame.append((id >>  8) & 0xFF);
-    frame.append((id >>  0) & 0xFF);
+
     frame.append(data);
     _sendFrame(FRAME_OBJVALUE, frame);
 }
