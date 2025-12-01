@@ -225,19 +225,6 @@ void KaZaProtocol::sendVersionResponse(bool compatible)
     }
 }
 
-void KaZaProtocol::assumeLegacyClient()
-{
-    // Assume legacy client (version 1.0) for backward compatibility
-    // This is called when a client sends non-VERSION frames without negotiating
-    m_peerProtocolMajor = 1;
-    m_peerProtocolMinor = 0;
-    m_versionNegotiated = true;
-
-#ifdef DEBUG_FRAME
-    qDebug() << "Assuming legacy client version 1.0 (no version negotiation)";
-#endif
-}
-
 void KaZaProtocol::sendCommand(QString cmd)
 {
     _sendFrame(FRAME_SYSTEM, cmd.toUtf8());

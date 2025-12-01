@@ -41,9 +41,6 @@ public:
     quint8 peerProtocolMajor() const { return m_peerProtocolMajor; }
     quint8 peerProtocolMinor() const { return m_peerProtocolMinor; }
 
-    // Legacy client support - assume version 1.0 for backward compatibility
-    void assumeLegacyClient();
-
 public slots:
     // Version negotiation
     void sendVersion();
