@@ -291,12 +291,12 @@ void KaZaProtocol::sendDbQuery(uint32_t id, const QString &query)
     _sendFrame(FRAME_DBQUERY, data);
 }
 
-void KaZaProtocol::sendDbQueryResult(uint32_t id, const QStringList &culumns, const QList<QList<QVariant>> &result)
+void KaZaProtocol::sendDbQueryResult(uint32_t id, const QStringList &columns, const QList<QList<QVariant>> &result)
 {
     QByteArray dataret;
     QDataStream stream(&dataret, QIODevice::ReadWrite);
     stream << id;
-    stream << culumns;
+    stream << columns;
     stream << result;
     _sendFrame(FRAME_DBRESULT, dataret);
 }
