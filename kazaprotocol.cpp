@@ -1,6 +1,7 @@
 #include "kazaprotocol.h"
 #include <QFile>
 #include <QTcpSocket>
+#include <QDataStream>
 
 // #define DEBUG_FRAME
 
@@ -150,6 +151,18 @@ void KaZaProtocol::_dataReady()
             dataStream >> id;
             dataStream >> state;
             emit frameSocketState(id, state);
+            break;
+        }
+        case FRAME_OBJLIST: {
+            // Decompress the data
+            QByteArray uncompressed = qUncompress(data);
+            QDataStream dataStream(&uncompressed, QIODevice::ReadOnly);
+            dataStream.setVersion(QDataStream::Qt_6_0);
+
+            QMap<QString, QPair<QVariant, QString>> objects;
+            dataStream >> objects;
+
+            emit frameObjectsList(objects);
             break;
         }
         }
@@ -314,4 +327,19 @@ void KaZaProtocol::sendSocketState(uint16_t id, uint16_t state)
     stream << id;
     stream << state;
     _sendFrame(FRAME_SOCKET_STATE, dataret);
+}
+
+void KaZaProtocol::sendFrameObjectsList(const QMap<QString, QPair<QVariant, QString>> &objects)
+{
+    // Serialize objects to QByteArray
+    QByteArray uncompressed;
+    QDataStream stream(&uncompressed, QIODevice::WriteOnly);
+    stream.setVersion(QDataStream::Qt_6_0);
+    stream << objects;
+
+    // Compress the serialized data
+    QByteArray compressed = qCompress(uncompressed);
+
+    // Send the compressed frame
+    _sendFrame(FRAME_OBJLIST, compressed);
 }
