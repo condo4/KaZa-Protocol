@@ -12,7 +12,6 @@ class KaZaProtocol : public QObject
     Q_OBJECT
     QTcpSocket *m_socket;
     QByteArray m_pending;
-    bool m_versionNegotiated;
     quint8 m_peerProtocolMajor;
     quint8 m_peerProtocolMinor;
 
@@ -22,7 +21,7 @@ public:
 
     // Protocol version
     static constexpr quint8 PROTOCOL_VERSION_MAJOR = 1;
-    static constexpr quint8 PROTOCOL_VERSION_MINOR = 1;
+    static constexpr quint8 PROTOCOL_VERSION_MINOR = 0;
 
     enum {
         FRAME_SYSTEM,
@@ -37,15 +36,9 @@ public:
         FRAME_VERSION = 255  // Version negotiation frame
     };
 
-    // Version negotiation state
-    bool isVersionNegotiated() const { return m_versionNegotiated; }
-    quint8 peerProtocolMajor() const { return m_peerProtocolMajor; }
-    quint8 peerProtocolMinor() const { return m_peerProtocolMinor; }
-
 public slots:
     // Version negotiation
-    void sendVersion();
-    void sendVersionResponse(bool compatible);
+    void sendVersion(QString username, QString devicename, int channel);
 
     // Regular protocol frames
     void sendCommand(QString cmd);
@@ -67,9 +60,8 @@ signals:
     void disconnectFromHost();
 
     // Version negotiation signals
-    void versionReceived(quint8 major, quint8 minor);
-    void versionResponseReceived(bool compatible, quint8 major, quint8 minor);
-    void versionNegotiated();
+    void versionReceived(quint8 major, quint8 minor, QString &username, QString &devicename, int service);
+    void versionNegotiated(QString &username, QString &devicename, int service);
     void versionIncompatible(QString reason);
 
     // Regular protocol signals
