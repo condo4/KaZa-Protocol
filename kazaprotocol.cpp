@@ -204,13 +204,13 @@ void KaZaProtocol::sendVersion(QString username, QString devicename, int channel
     uint8_t major = PROTOCOL_VERSION_MAJOR;
     uint8_t minor = PROTOCOL_VERSION_MINOR;
     frameStream << major;
-    frameStream << major;
+    frameStream << minor;
     frameStream << username;
     frameStream << devicename;
     frameStream << channel;
 
 #ifdef DEBUG_FRAME
-    qDebug() << "Sending VERSION request:" << PROTOCOL_VERSION_MAJOR << "." << PROTOCOL_VERSION_MINOR << " " << username << " " << devicename << " " << channel;
+    qDebug() << "Sending VERSION request:" << major << "." << minor << " " << username << " " << devicename << " " << channel;
 #endif
 
     _sendFrame(FRAME_VERSION, frame);
