@@ -59,8 +59,9 @@ void KaZaProtocol::_dataReady()
             else
             {
                 // Protocol not supported
-                QString reason = "Protocol version incompatible. Server: " +
-                                 QString::number(peerMajor) + "." + QString::number(peerMinor);
+                QString reason = "Protocol version incompatible. Client: " +
+                                 QString::number(peerMajor) + "." + QString::number(peerMinor) +
+                                 " Server " + QString::number(PROTOCOL_VERSION_MAJOR) + "." + QString::number(PROTOCOL_VERSION_MINOR);
                 sendCommand("ERROR: " + reason);
                 emit versionIncompatible(reason);
             }
