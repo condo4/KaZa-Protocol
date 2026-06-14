@@ -151,7 +151,7 @@ void KaZaProtocol::_dataReady()
             QDataStream dataStream(&uncompressed, QIODevice::ReadOnly);
             dataStream.setVersion(QDataStream::Qt_6_0);
 
-            QMap<QString, std::pair<QVariant, QString>> objects;
+            QHash<QString, std::pair<QVariant, QString>> objects;
             dataStream >> objects;
 
             emit frameObjectsList(objects);
@@ -307,7 +307,7 @@ void KaZaProtocol::sendSocketState(uint16_t id, uint16_t state)
     _sendFrame(FRAME_SOCKET_STATE, dataret);
 }
 
-void KaZaProtocol::sendFrameObjectsList(const QMap<QString, std::pair<QVariant, QString>> &objects)
+void KaZaProtocol::sendFrameObjectsList(const QHash<QString, std::pair<QVariant, QString>> &objects)
 {
     // Serialize objects to QByteArray
     QByteArray uncompressed;
