@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QByteArray>
 #include <QVariant>
+#include <utility>
 
 class QTcpSocket;
 
@@ -49,7 +50,7 @@ public slots:
     void sendSocketConnect(uint16_t id, const QString hostname, uint16_t port);
     void sendSocketData(uint16_t id, QByteArray data);
     void sendSocketState(uint16_t id, uint16_t state);
-    void sendFrameObjectsList(const QMap<QString, QPair<QVariant, QString>> &objects);
+    void sendFrameObjectsList(const QMap<QString, std::pair<QVariant, QString>> &objects);
 
 private slots:
     void _dataReady();
@@ -73,7 +74,7 @@ signals:
     void frameSocketConnect(uint16_t id, const QString hostname, uint16_t port);
     void frameSocketData(uint16_t id, QByteArray data);
     void frameSocketState(uint16_t id, uint16_t state);
-    void frameObjectsList(const QMap<QString, QPair<QVariant, QString>> &objects);
+    void frameObjectsList(const QMap<QString, std::pair<QVariant, QString>> &objects);
 };
 
 
