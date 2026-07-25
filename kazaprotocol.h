@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QByteArray>
+#include <QDateTime>
 #include <QHash>
 #include <QVariant>
 #include <utility>
@@ -34,8 +35,19 @@ public:
         FRAME_SOCKET_CONNECT,
         FRAME_SOCKET_DATA,
         FRAME_SOCKET_STATE,
-        FRAME_OBJLIST,       // Compressed objects list
-        FRAME_VERSION = 255  // Version negotiation frame
+        FRAME_OBJLIST,        // Compressed objects list
+        FRAME_HISTORY,        // Generic min/avg/max history request
+        FRAME_HISTORYRESULT,  // Generic min/avg/max history result
+        FRAME_VERSION = 255   // Version negotiation frame
+    };
+
+    // Aggregation step for FRAME_HISTORY requests
+    enum HistoryStep : quint8 {
+        HistoryStepHour,
+        HistoryStepDay,
+        HistoryStepWeek,
+        HistoryStepMonth,
+        HistoryStepYear
     };
 
 public slots:
@@ -48,6 +60,11 @@ public slots:
     void sendObject(quint16 id, const QVariant &value, bool confirm);
     void sendDbQuery(uint32_t id, const QString &query);
     void sendDbQueryResult(uint32_t id, const QStringList &columns, const QList<QList<QVariant>> &result);
+    void sendHistoryRequest(uint32_t id, const QString &domain, const QString &object,
+                             const QDateTime &start, const QDateTime &end, quint8 step);
+    void sendHistoryResult(uint32_t id, bool ok, const QString &error,
+                            const QList<QDateTime> &ts, const QList<double> &min,
+                            const QList<double> &avg, const QList<double> &max);
     void sendSocketConnect(uint16_t id, const QString hostname, uint16_t port);
     void sendSocketData(uint16_t id, QByteArray data);
     void sendSocketState(uint16_t id, uint16_t state);
@@ -72,6 +89,9 @@ signals:
     void frameOject(quint16 id, QVariant value, bool confirm);
     void frameDbQuery(uint32_t id, QString query);
     void frameDbQueryResult(uint32_t id, const QStringList &columns, const QList<QList<QVariant>> &result);
+    void frameHistory(uint32_t id, QString domain, QString object, QDateTime start, QDateTime end, quint8 step);
+    void frameHistoryResult(uint32_t id, bool ok, QString error, QList<QDateTime> ts,
+                             QList<double> min, QList<double> avg, QList<double> max);
     void frameSocketConnect(uint16_t id, const QString hostname, uint16_t port);
     void frameSocketData(uint16_t id, QByteArray data);
     void frameSocketState(uint16_t id, uint16_t state);

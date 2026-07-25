@@ -116,6 +116,42 @@ void KaZaProtocol::_dataReady()
             emit frameDbQueryResult(id, columns, result);
             break;
         }
+        case FRAME_HISTORY: {
+            QDataStream dataStream(&data, QIODevice::ReadOnly);
+            uint32_t id;
+            QString domain;
+            QString object;
+            QDateTime start;
+            QDateTime end;
+            quint8 step;
+            dataStream >> id;
+            dataStream >> domain;
+            dataStream >> object;
+            dataStream >> start;
+            dataStream >> end;
+            dataStream >> step;
+            emit frameHistory(id, domain, object, start, end, step);
+            break;
+        }
+        case FRAME_HISTORYRESULT: {
+            QDataStream dataStream(&data, QIODevice::ReadOnly);
+            uint32_t id;
+            bool ok;
+            QString error;
+            QList<QDateTime> ts;
+            QList<double> min;
+            QList<double> avg;
+            QList<double> max;
+            dataStream >> id;
+            dataStream >> ok;
+            dataStream >> error;
+            dataStream >> ts;
+            dataStream >> min;
+            dataStream >> avg;
+            dataStream >> max;
+            emit frameHistoryResult(id, ok, error, ts, min, avg, max);
+            break;
+        }
         case FRAME_SOCKET_CONNECT: {
             QDataStream dataStream(&data, QIODevice::ReadOnly);
             uint16_t id;
@@ -277,6 +313,36 @@ void KaZaProtocol::sendDbQueryResult(uint32_t id, const QStringList &columns, co
     stream << columns;
     stream << result;
     _sendFrame(FRAME_DBRESULT, dataret);
+}
+
+void KaZaProtocol::sendHistoryRequest(uint32_t id, const QString &domain, const QString &object,
+                                       const QDateTime &start, const QDateTime &end, quint8 step)
+{
+    QByteArray data;
+    QDataStream dataStream(&data, QIODevice::WriteOnly);
+    dataStream << id;
+    dataStream << domain;
+    dataStream << object;
+    dataStream << start;
+    dataStream << end;
+    dataStream << step;
+    _sendFrame(FRAME_HISTORY, data);
+}
+
+void KaZaProtocol::sendHistoryResult(uint32_t id, bool ok, const QString &error,
+                                      const QList<QDateTime> &ts, const QList<double> &min,
+                                      const QList<double> &avg, const QList<double> &max)
+{
+    QByteArray data;
+    QDataStream dataStream(&data, QIODevice::WriteOnly);
+    dataStream << id;
+    dataStream << ok;
+    dataStream << error;
+    dataStream << ts;
+    dataStream << min;
+    dataStream << avg;
+    dataStream << max;
+    _sendFrame(FRAME_HISTORYRESULT, data);
 }
 
 void KaZaProtocol::sendSocketConnect(uint16_t id, const QString hostname, uint16_t port)
